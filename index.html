@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#090b20" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Riftwright — Build. Hold. Survive.</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%235de8e1' d='M32 3 57 17v30L32 61 7 47V17z'/%3E%3Cpath fill='%23090b20' d='m32 15 15 8v18l-15 8-15-8V23z'/%3E%3Cpath fill='%23ff6b9d' d='m32 23 8 4.5v9L32 41l-8-4.5v-9z'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="game-canvas" aria-label="Riftwright 3D game"></canvas>
+    <div class="atmosphere" aria-hidden="true">
+      <div class="vignette"></div>
+      <div class="grain"></div>
+      <div class="scanlines"></div>
+    </div>
+
+    <div id="hud" class="hud is-hidden" aria-live="polite">
+      <div class="hud-top">
+        <div class="brand-mini">
+          <span class="brand-glyph"><i></i></span>
+          <div class="brand-copy"><b>RIFTWRIGHT</b><span>LAST LIGHT PROTOCOL</span></div>
+        </div>
+
+        <div class="wave-chip" id="waveChip">
+          <span class="wave-eyebrow" id="phaseLabel">PREPARE</span>
+          <strong id="waveTimer">0:18</strong>
+          <div class="wave-pips" id="wavePips" aria-hidden="true"></div>
+        </div>
+
+        <div class="hud-actions">
+          <button class="icon-btn" id="soundBtn" aria-label="Toggle sound">
+            <svg viewBox="0 0 24 24" class="icon-on"><path d="M4 9v6h4l5 4V5L8 9H4Zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4Zm-2.5-9v2.1a7 7 0 0 1 0 13.8V21a9 9 0 0 0 0-18Z"/></svg>
+            <svg viewBox="0 0 24 24" class="icon-off"><path d="M4 9v6h4l5 4V5L8 9H4Zm12 0 4 4m0-4-4 4" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          </button>
+          <button class="icon-btn" id="pauseBtn" aria-label="Pause game">
+            <svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>
+          </button>
+        </div>
+
+        <div class="status-cluster">
+          <div class="status-row hp-row">
+            <span class="status-icon">✚</span>
+            <div class="status-track"><i id="healthFill"></i></div>
+            <b id="healthValue">100</b>
+          </div>
+          <div class="status-row core-row">
+            <span class="status-icon">◈</span>
+            <div class="status-track"><i id="coreFill"></i></div>
+            <b id="coreValue">1000</b>
+          </div>
+        </div>
+
+        <div class="resource-strip">
+          <div class="res-chip wood" id="resWood">
+            <span class="res-dot"></span><em>W</em><b>120</b>
+          </div>
+          <div class="res-chip stone" id="resStone">
+            <span class="res-dot"></span><em>S</em><b>80</b>
+          </div>
+          <div class="res-chip metal" id="resMetal">
+            <span class="res-dot"></span><em>M</em><b>40</b>
+          </div>
+        </div>
+      </div>
+
+      <div class="objective-ribbon" id="objectiveRibbon">
+        <span class="obj-diamond"></span>
+        <span id="objectiveText">DEFEND THE RIFT CORE</span>
+        <span class="hostile-count" id="hostileCount">0 HOSTILES</span>
+      </div>
+
+      <div class="crosshair" id="crosshair">
+        <span class="ch-dot"></span>
+        <span class="ch-arm top"></span><span class="ch-arm right"></span>
+        <span class="ch-arm bottom"></span><span class="ch-arm left"></span>
+        <span class="hitmarker"></span>
+      </div>
+      <div class="build-reticle" id="buildReticle" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div class="build-float-hint" id="buildHint">WALL · 10 WOOD</div>
+
+      <div class="joystick" id="joystick" aria-label="Movement joystick">
+        <div class="joystick-ring"><span class="joystick-mark n">▲</span><span class="joystick-mark e">▶</span><span class="joystick-mark s">▼</span><span class="joystick-mark w">◀</span></div>
+        <div class="joystick-knob" id="joystickKnob"><i></i></div>
+      </div>
+
+      <div class="action-cluster">
+        <button class="action-btn jump-btn" id="jumpBtn" aria-label="Jump">
+          <svg viewBox="0 0 24 24"><path d="m12 3 6 7h-4v6h-4v-6H6l6-7Zm-7 16h14v2H5v-2Z"/></svg>
+          <span>JUMP</span>
+        </button>
+        <button class="action-btn build-btn" id="buildBtn" aria-label="Toggle build mode">
+          <svg viewBox="0 0 24 24"><path d="m14.7 2.3 7 7-2.1 2.1-1.6-1.6-8.6 8.6 1.6 1.6-2.1 2.1-7-7 2.1-2.1 1.6 1.6 8.6-8.6-1.6-1.6 2.1-2.1Z"/><path d="m3 21 5.8-2.3-3.5-3.5L3 21Z"/></svg>
+          <span id="buildBtnLabel">BUILD</span>
+        </button>
+        <button class="action-btn fire-btn" id="fireBtn" aria-label="Fire blaster">
+          <span class="fire-glow"></span>
+          <svg class="icon-fire" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4M2 12h4m12 0h4M5 5l3 3m8 8 3 3M19 5l-3 3M8 16l-3 3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="12" r="3.5"/></svg>
+          <svg class="icon-place" viewBox="0 0 24 24"><path d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z"/></svg>
+          <span id="fireBtnLabel">FIRE</span>
+          <small id="fireBtnSub">HOLD</small>
+        </button>
+      </div>
+
+      <div class="build-tray" id="buildTray" aria-label="Build pieces">
+        <div class="piece-group">
+          <button class="piece-btn selected" data-piece="wall">
+            <svg viewBox="0 0 32 32"><path d="M4 6h24v20H4zM4 16h24M12 6v10m8 0v10" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            <span>WALL</span>
+          </button>
+          <button class="piece-btn" data-piece="floor">
+            <svg viewBox="0 0 32 32"><path d="m16 4 13 7-13 7L3 11l13-7Zm13 10v5l-13 7-13-7v-5l13 7 13-7Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+            <span>FLOOR</span>
+          </button>
+          <button class="piece-btn" data-piece="ramp">
+            <svg viewBox="0 0 32 32"><path d="M4 25 20 7h8v18H4Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m8 25 12-14m-6 14 12-14" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".65"/></svg>
+            <span>RAMP</span>
+          </button>
+        </div>
+        <div class="mat-group">
+          <button class="mat-btn wood selected" data-mat="wood" aria-label="Wood material"><i></i><span>W</span></button>
+          <button class="mat-btn stone" data-mat="stone" aria-label="Stone material"><i></i><span>S</span></button>
+          <button class="mat-btn metal" data-mat="metal" aria-label="Metal material"><i></i><span>M</span></button>
+        </div>
+      </div>
+
+      <div class="hint" id="hint">
+        <span class="hint-dot"></span>
+        <span id="hintText">SHOOT GLOWING RESOURCES TO HARVEST</span>
+      </div>
+
+      <div class="wave-banner" id="waveBanner">
+        <span id="bannerTop">WAVE 1</span>
+        <strong id="bannerMain">STORM INCOMING</strong>
+        <small id="bannerSub">RAISE YOUR DEFENSES</small>
+      </div>
+
+      <div class="toast" id="toast"></div>
+
+      <div class="damage-flash" id="damageFlash"></div>
+      <div class="heal-flash" id="healFlash"></div>
+    </div>
+
+    <section id="menu" class="overlay menu-overlay">
+      <div class="menu-top">
+        <div class="brand-lockup">
+          <span class="brand-glyph large"><i></i></span>
+          <span>RIFTWRIGHT<small>FIELD UNIT 07</small></span>
+        </div>
+        <button class="menu-sound icon-btn" id="menuSoundBtn" aria-label="Toggle sound">
+          <svg viewBox="0 0 24 24" class="icon-on"><path d="M4 9v6h4l5 4V5L8 9H4Zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4Z"/></svg>
+          <svg viewBox="0 0 24 24" class="icon-off"><path d="M4 9v6h4l5 4V5L8 9H4Zm12 0 4 4m0-4-4 4" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+      </div>
+
+      <div class="menu-main">
+        <div class="eyebrow"><span></span> A 3D BUILD & DEFEND SURVIVAL</div>
+        <h1><span class="title-rift">RIFT</span><span class="title-wright">WRIGHT</span></h1>
+        <p class="tagline">Harvest the wilds. Raise the walls.<br /><em>Hold the last rift.</em></p>
+        <div class="menu-actions">
+          <button class="deploy-btn" id="deployBtn">
+            <span class="deploy-icon">▶</span>
+            <span class="deploy-copy"><b>ENTER THE RIFT</b><small>TAP TO DEPLOY</small></span>
+            <span class="deploy-arrow">→</span>
+          </button>
+          <button class="ghost-btn" id="howBtn">
+            <span>?</span> HOW TO PLAY
+          </button>
+        </div>
+        <div class="feature-row">
+          <div><i class="feature-icon harvest"></i><span><b>HARVEST</b><small>Shoot resources</small></span></div>
+          <div><i class="feature-icon build"></i><span><b>BUILD</b><small>Walls • floors • ramps</small></span></div>
+          <div><i class="feature-icon defend"></i><span><b>DEFEND</b><small>Survive 5 waves</small></span></div>
+        </div>
+      </div>
+
+      <div class="menu-footer">
+        <span class="live-dot"></span> BEST PLAYED IN LANDSCAPE
+        <span class="footer-sep">/</span>
+        TOUCH + KEYBOARD READY
+      </div>
+
+      <div class="how-panel" id="howPanel" aria-hidden="true">
+        <button class="how-close" id="howClose" aria-label="Close instructions">×</button>
+        <span class="eyebrow"><span></span> FIELD MANUAL</span>
+        <h2>BUILD YOUR LAST STAND</h2>
+        <div class="how-grid">
+          <div><b>01</b><h3>MOVE & AIM</h3><p>Use the left stick to move. Drag anywhere on the right side to look. Tap <strong>FIRE</strong> to shoot.</p></div>
+          <div><b>02</b><h3>HARVEST</h3><p>Shoot glowing trees, stone, and scrap to collect wood, stone, and metal. Materials are your lifeline.</p></div>
+          <div><b>03</b><h3>FORTIFY</h3><p>Open <strong>BUILD</strong>, pick a wall, floor, or ramp, then hold <strong>PLACE</strong>. Build around the rift core.</p></div>
+          <div><b>04</b><h3>SURVIVE</h3><p>Enemies smash your structures and hunt the core. Keep rebuilding, keep shooting, and last five waves.</p></div>
+        </div>
+        <div class="key-row"><span>WASD</span> MOVE <span>MOUSE</span> AIM <span>F</span> FIRE <span>B</span> BUILD <span>SPACE</span> JUMP</div>
+      </div>
+    </section>
+
+    <section id="pauseOverlay" class="overlay pause-overlay is-hidden">
+      <div class="panel pause-panel">
+        <span class="eyebrow"><span></span> SIGNAL PAUSED</span>
+        <h2>HOLD THE LINE</h2>
+        <p>The storm waits for no one. Neither should you.</p>
+        <button class="deploy-btn compact" id="resumeBtn"><span class="deploy-copy"><b>RESUME</b><small>BACK TO THE FIGHT</small></span><span class="deploy-arrow">→</span></button>
+        <div class="pause-row">
+          <button class="ghost-btn" id="restartBtn">RESTART RUN</button>
+          <button class="ghost-btn" id="quitBtn">ABANDON</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="endOverlay" class="overlay end-overlay is-hidden">
+      <div class="panel end-panel">
+        <span class="eyebrow" id="endEyebrow"><span></span> RIFT COLLAPSED</span>
+        <h2 id="endTitle">THE CORE FELL</h2>
+        <p id="endCopy">The storm took the last light. Rebuild. Return stronger.</p>
+        <div class="result-grade" id="resultGrade">D</div>
+        <div class="stat-grid">
+          <div><span>WAVE</span><b id="statWave">1</b></div>
+          <div><span>ELIMINATIONS</span><b id="statKills">0</b></div>
+          <div><span>STRUCTURES</span><b id="statBuilds">0</b></div>
+          <div><span>HARVESTED</span><b id="statHarvest">0</b></div>
+        </div>
+        <div class="score-line"><span>SCORE</span><b id="statScore">00000</b></div>
+        <button class="deploy-btn compact" id="playAgainBtn"><span class="deploy-copy"><b>BUILD AGAIN</b><small>RETURN TO THE RIFT</small></span><span class="deploy-arrow">↻</span></button>
+        <button class="ghost-btn" id="backMenuBtn">MAIN MENU</button>
+      </div>
+    </section>
+
+    <div class="rotate-note" id="rotateNote">
+      <div class="rotate-icon">↻</div>
+      <span>For the best build view, rotate your device</span>
+    </div>
+
+    <div class="loading" id="loading">
+      <div class="loading-mark"><i></i></div>
+      <span>FORGING THE RIFT</span>
+    </div>
+  </div>
+
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.min.js" } }
+  </script>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
